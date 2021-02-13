@@ -1,0 +1,47 @@
+AWSTemplateFormatVersion: 2010-09-09
+Transform: AWS::Serverless-2016-10-31
+Description: unzip uploaded zip file to another S3 bucket
+Parameters:
+  ZippedArtifactBucket:
+    Type: String
+  UnzippedArtifactBucket:
+    Type: String
+Resources:
+  Unzipper:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: artifact
+      Handler: unzipper
+      Runtime: go1.x
+      Timeout: 180
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref ZippedArtifactBucket
+        - S3CrudPolicy:
+            BucketName: !Ref UnzippedArtifactBucket
+      Environment:
+        Variables:
+          UNZIPPED_ARTIFACT_BUCKET: !Ref UnzippedArtifactBucket
+      Tracing: Active
+      Events:
+        UploadedEvent:
+          Type: S3
+          Properties:
+            Bucket: !Ref Zipped
+            Events: s3:ObjectCreated:Put
+
+  UnzipperLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${Unzipper}
+      RetentionInDays: 1
+
+  Zipped:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref ZippedArtifactBucket
+
+  Unzipped:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref UnzippedArtifactBucket
